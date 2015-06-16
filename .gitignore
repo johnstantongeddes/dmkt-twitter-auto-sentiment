@@ -1,0 +1,5 @@
+.httr-oauth
+.Rproj.user
+.Rhistory
+packrat/lib*/
+*.key

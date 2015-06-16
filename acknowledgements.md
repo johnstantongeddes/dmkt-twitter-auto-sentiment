@@ -1,0 +1,1 @@
+Developed by the Product Analytics Team at [Dealer.com](http://www.dealer.com/). Motivated by [RStudio](http://shiny.rstudio.com/gallery/word-cloud.html) and made possible by the [Twitter API](https://dev.twitter.com) through [TwitteR](https://github.com/geoffjentry/twitteR).
