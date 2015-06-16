@@ -5,7 +5,7 @@ fluidPage(
   sidebarLayout(
     # Sidebar with a slider and selection inputs
     sidebarPanel(
-      p("Explore tweets that hashtag or mention the selected car make in the past week. 
+      p("Visualize the words in tweets that # or @ the selected car make in the past week. 
         The size of the word is proportional to the number of times it has been used. Enjoy!"),
       selectInput("selection", "Choose a car make:",
                   choices = makes,
