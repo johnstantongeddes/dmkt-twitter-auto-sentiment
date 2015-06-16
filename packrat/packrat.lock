@@ -3,6 +3,11 @@ PackratVersion: 0.4.2.1
 RVersion: 3.1.2
 Repos: CRAN=http://cran.rstudio.com
 
+Package: BH
+Source: CRAN
+Version: 1.58.0-1
+Hash: e85f8550fd05942d46bc4ac2d6172779
+
 Package: DBI
 Source: CRAN
 Version: 0.3.1
@@ -44,6 +49,11 @@ Source: CRAN
 Version: 0.5.1
 Hash: 9517fc610f92fcd56b40d017ba7337cf
 
+Package: aster2
+Source: CRAN
+Version: 0.2-1
+Hash: cbec32cbe93c6d8474386d9883d1c9de
+
 Package: bit
 Source: CRAN
 Version: 1.1-12
@@ -60,16 +70,32 @@ Source: CRAN
 Version: 1.0-6
 Hash: cb26464a8321628636b547518994c931
 
+Package: brew
+Source: CRAN
+Version: 1.0-6
+Hash: 9d92cc5ac60123fdb7b0daa3ae83bf99
+
 Package: caTools
 Source: CRAN
 Version: 1.17.1
 Hash: bb5fdc266f716b8a289a4f92007d53e3
 Requires: bitops
 
+Package: curl
+Source: CRAN
+Version: 0.8
+Hash: ad63b4200bca4aefda510425be13dee9
+
 Package: digest
 Source: CRAN
 Version: 0.6.8
 Hash: 89dc4c8734dad5322bb3c5c2af09056f
+
+Package: evaluate
+Source: CRAN
+Version: 0.7
+Hash: 96c38894bf65a2e890f7c6ec840a6466
+Requires: stringr
 
 Package: htmltools
 Source: CRAN
@@ -115,6 +141,17 @@ Source: CRAN
 Version: 0.2.15
 Hash: f78059fac4af154bfe46bf547ae12be9
 
+Package: roxygen2
+Source: CRAN
+Version: 4.1.1
+Hash: c4adc3744c9c23cc73a9f642ce5c0261
+Requires: Rcpp, brew, digest, stringr
+
+Package: rstudioapi
+Source: CRAN
+Version: 0.3.1
+Hash: ee415a4fe305c6222630d8e5572781e7
+
 Package: slam
 Source: CRAN
 Version: 0.1-32
@@ -136,6 +173,11 @@ Source: CRAN
 Version: 1.1.8
 Hash: 822a5fec7f763c96e46b5b8034088793
 Requires: DBI, bit64, httr, rjson
+
+Package: whisker
+Source: CRAN
+Version: 0.3-2
+Hash: 186ab2937fec1694c8a63009a2389c4e
 
 Package: wordcloud
 Source: CRAN

@@ -16,7 +16,10 @@ library(stringr)
 # authorize twitter
 consumer_key <- readLines("consumer_key.key")
 consumer_secret <- readLines("consumer_secret.key")
-setup_twitter_oauth(consumer_key, consumer_secret)
+access_token <- readLines("access_token.key")
+access_secret <- readLines("access_secret.key")
+
+setup_twitter_oauth(consumer_key, consumer_secret, access_token, access_secret)
 
 # The list of valid car makes
 makes <<- list("Acura" = "acura",
@@ -44,7 +47,7 @@ makes <<- list("Acura" = "acura",
                "Lamborghini" = "lamborghini",
                "Land Rover" = "landrover",
                "Lexus" = "lexus",
-               "Lincoln" = "lincoln",
+               "Lincoln" = "lincolnmotorco",
                "Lotus" = "lotus",
                "Maserati" = "maserati",
                "Mazda" = "mazda",
