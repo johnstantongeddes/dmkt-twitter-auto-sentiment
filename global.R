@@ -96,6 +96,8 @@ getTermMatrix <- memoise(function(make) {
     thistweet <- thistweet[!grepl(make, thistweet)]
     # remove links
     thistweet <- thistweet[!grepl("http", thistweet)]
+    # remove 'amp' which keeps showing up
+    thistweet <- thistweet[!grepl("amp", thistweet)]
 
     tweetdf[i, "text2"] <- paste(thistweet, collapse = " ")
   }
