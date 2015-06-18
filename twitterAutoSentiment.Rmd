@@ -1,0 +1,261 @@
+---
+title: "The TwitteR Auto Sentiment Project"
+author: "John Stanton-Geddes, Data Scientist \n DMKT Product Analytics"
+date: "June 11, 2015"
+output: 
+  html_document:
+    keep_md: true
+---
+
+The DMKT Product Analytics team provides the analysis for data-driven business decisions to improve the Dealer.com and Dealertrack product suite. To accomplish our work, we use our awesome proprietary data and the best available tools. Counter-intuitively, in recent years free open-source software tools, primarily R and Python, have gained ground on proprietary software for data analysis. In large part, this is because of the nature of the open-source community enabling much more rapid development of these tools.
+
+In this report, I will demonstrate how we R-language for statistical programming to address business needs. Specifically, I answer the question *to what extent do car brands vary in consumer sentiment on Twitter?* 
+
+Besides the obvious interest of this question, I choose it because it uses freely-available data from [Twitter](https://twitter.com/)), and highlights the integrated workflow of the R environment where I can collect, clean, analyze and present data all within the R environment. 
+
+Below, I walk step-by-step through the code to explain how I collected and analyzed the data.
+
+## R setup
+
+The extensibility of R is demonstrated by the > 1,000 packages available on the [Comprehensive R Archive Network](http://cran.r-project.org/). This report was generated from the R source code using the `knitr` package. Each section ('chunk') of source code is shown in grey boxes, and the results are shown in white boxes. In this code chunk, I loaded the R packages necessary for the analysis.
+
+```{r setup, warning=FALSE, message=FALSE}
+# knitr to generate report
+library(knitr)
+opts_chunk$set(cache=TRUE)
+
+# for twitter API
+library(httr)
+library(httpuv)
+#library(devtools)
+#install_github("geoffjentry/twitteR")
+library(twitteR)
+
+# for word cloud
+library(SnowballC)
+library(tm)
+library(wordcloud)
+library(memoise)
+
+# for data parsing
+library(stringr)
+library(plyr)
+
+# for plots and tables
+library(ggplot2)
+library(pander)
+```
+
+## Data
+
+I collected data from the Twitter [API](https://dev.twitter.com/overview/documentation) using the [TwitteR package](http://cran.r-project.org/web/packages/twitteR/). To do this, I had to set up a developer account, as explained in the [TwitteR vignette](http://geoffjentry.hexdump.org/twitteR.pdf), so I could authenticate my connection from this R session. 
+
+
+```{r setupTwitter}
+consumer_key <- readLines("consumer_key.key")
+consumer_secret <- readLines("consumer_secret.key")
+access_token <- readLines("access_token.key")
+access_secret <- readLines("access_secret.key")
+
+setup_twitter_oauth(consumer_key, consumer_secret, access_token, access_secret)
+```
+
+I pulled 1,000 tweets from the past week, English only, that mention (#) or are directed at (@) the Twitter handle of each of the major car brands. 
+
+```{r get_tweets, cache=TRUE}
+# list of car brands, modified to their twitter account
+# e.g. lincoln = lincolnmotorco
+#brands <- list("Acura" = "acura", "Aston Martin" = "astonmartin", "Audi" = "audi", "Bentley" = "bentleymotors") # FOR TESTING
+#brands <- list("acura", "astonmartin", "audi", "bentleymotors", "bmw", "buick", "cadillac")
+
+brands <- list("acura", "astonmartin", "audi", "bentleymotors", "bmw", "buick", "cadillac", 
+              "chevrolet", "chrysler", "dodge", "ferrari", "fiatontheweb", "ford", "ThisIsGMC", 
+              "honda", "hyundai", "infinitiUSA", "isuzu", "jaguar", "jeep", "kia", "lamborghini", 
+              "landrover", "lexus", "lincolnmotorco", "maserati", "mazdausa", "mclarenauto", 
+              "mercedesbenz", "mini", "mitsucars", "nissan", "porsche", "ramtrucks", "rollsroyce", "scion",
+              "subaru_usa", "teslamotors", "toyota", "vw", "volvocarglobal")
+
+# function to get tweets in data.frame format for use in ldply
+getTweets <- function(brand, n = 1000) {
+  library(twitteR)
+  
+  TS <- paste0("@", brand, " OR ", "#", brand)
+  # get tweets
+  tweets <- searchTwitter(TS, n = n, since = format(Sys.Date()-7), lang="en")
+  # strip retweets
+  if(length(tweets)>0) {
+    tweets <- strip_retweets(tweets, strip_manual = TRUE, strip_mt = TRUE)
+    # convert to data.frame
+    tweetdf <- twListToDF(tweets)
+    # add brand and return
+    out <- cbind(brand, tweetdf)
+  } else {
+    out <- structure(list(brand = structure(integer(0), .Label = c(brand), class = "factor"),
+                               text = character(0), 
+                               favorited = logical(0), 
+                               favoriteCount = numeric(0), 
+                               replyToSN = character(0), 
+                               created = structure(numeric(0), class = c("POSIXct", "POSIXt"), tzone = "UTC"),
+                               truncated = logical(0), replyToSID = character(0), 
+                               id = character(0), 
+                               replyToUID = character(0), 
+                               statusSource = character(0), 
+                               screenName = character(0), 
+                               retweetCount = numeric(0), 
+                               isRetweet = logical(0), 
+                               retweeted = logical(0), 
+                               longitude = character(0), 
+                               latitude = character(0)), 
+                          .Names = c("brand", "text", "favorited", "favoriteCount", "replyToSN", "created",  "truncated", "replyToSID", "id", "replyToUID", "statusSource", "screenName", "retweetCount", "isRetweet", "retweeted", "longitude","latitude"), row.names = integer(0), class = "data.frame")
+  }
+  
+  return(out)
+}
+
+# use plyr to get tweets for all brands in parallel
+tweets_by_brand <- ldply(brands, function(brand) getTweets(brand, n=100))
+str(tweets_by_brand)
+```
+
+The warning tells me that for some of the car brands, there are no tweets. I may want to return and try a different search for these brands.
+
+The `str` command shows the structure of the data, which included `r nrow(tweets_by_brand)` tweets, including the text of the message, when it was created, user ID, source, screen name, retweet information, and location information.
+
+The text of the messages was messay, so I cleaned the tweets by removing any non-alphanumeric charaters, the @ and # phrases, and web links.
+
+```{r clean_tweets, warning=FALSE}
+# function to clean tweets
+cleanTweet <- function(tweet, leaveout) {
+  thistweet <- unlist(str_split(tweet, pattern = " "))
+  # remove all non-alphanumeric characters
+  thistweet <- str_replace_all(thistweet, "[^[:alnum:]]", " ")
+  # convert to lowercase 
+  thistweet <- tolower(thistweet)
+  # remove brand as it swamps other words
+  thistweet <- thistweet[!grepl(leaveout, thistweet)]
+  # remove links
+  thistweet <- thistweet[!grepl("http", thistweet)]
+  # remove 'amp' which keeps showing up
+  thistweet <- thistweet[!grepl("amp", thistweet)]
+  # recombine and return
+  paste(thistweet, collapse = " ")
+}
+
+# ddply to clean tweet text
+tweets_by_brand <- ddply(tweets_by_brand, .(id), mutate, text_clean = cleanTweet(text, leaveout = brand[1]))
+```
+
+# Sentiment Analysis
+
+Consumer sentiment about a brand is extremely important for sales, and also highly dynamic over time. I used the cleaned text from the tweets to determine if people (or at least, the biased sample of people using Twitter) have positive or negative sentiment about each brand. For this analysis, I used the method of Breen [2011](http://www.slideshare.net/jeffreybreen/r-by-example-mining-twitter-for) with the Hu & Liu [KDD-2004](http://www.cs.uic.edu/~liub/FBS/sentiment-analysis.html) opinion-lexicon.
+
+
+```{r sentiment}
+# load opinion lexicon
+hu_liu_pos <- scan("data/opinion-lexicon-English/positive-words.txt", skip = 35, what = "character")
+hu_liu_neg <- scan("data/opinion-lexicon-English/negative-words.txt", skip = 35, what = "character")
+
+# add industry-specific terms...
+pos_words <- c(hu_liu_pos, "highlife")
+neg_words <- c(hu_liu_neg, "dammit", "recall", "safety", "crash", "accident", "malfunction")
+
+# sentiment_score function
+sentiment_score <- function(text, pos_words, neg_words) {
+  library(stringr)
+  # split text into words
+  word_list <- str_split(text, '\\s+')
+  # unlist
+  words <- unlist(word_list)
+    
+  # compare rods to the dictionaries of positive and negative terms
+  # return only those that are TRUE/FALSE
+  pos_matches <- !is.na(match(words, pos_words))
+  neg_matches <- !is.na(match(words, neg_words))
+    
+  # score. TRUE/FAlSE treated as 1/0 by sum()
+  score <- sum(pos_matches) - sum(neg_matches)
+  return(score)
+}
+
+# calculate sentiment score for each tweet
+# identify very positive (sscore > 1) and negative (sscore < -1) tweets
+tweets_by_brand <- ddply(tweets_by_brand, .(id), mutate, 
+                        sscore = sentiment_score(text_clean, pos_words = pos_words, neg_words = neg_words),
+                        very_pos = as.numeric(sscore > 1),
+                        very_neg = as.numeric(sscore < -1))
+
+#str(tweets_by_brand)
+
+# summarise by brand
+# ratio of positive (sscore > 1) to negative (sscore < -1) sentiment by brand
+sscore_by_brand <- ddply(tweets_by_brand, 'brand', summarize, 
+                        sscore_mean = mean(sscore),
+                        sscore_sd = sd(sscore),
+                        pos_count = sum(very_pos),
+                        neg_count = sum(very_neg))
+
+# overall sentiment score by brand as ratio of very positive to very negative tweets
+sscore_by_brand <- mutate(sscore_by_brand, .(id), mutate,
+                         sscore_overall = round(100 * pos_count/(pos_count + neg_count)))
+
+# order
+sscore_by_brand <- sscore_by_brand[order(sscore_by_brand$sscore_overall, decreasing = TRUE), ]
+sscore_by_brand
+```
+
+The rankings of car brands by Twitter consumer sentiment, according to tweets from the past week, are shown in this table. Many brands have only positive sentiment (no negative messages), but a few have sentiment at or below 50%. 
+
+## Word Cloud
+
+The sentiment analysis provides a key metric for consumer satisifaction, but isn't informative to what the reasons are, and isn't visually interesting. To give greater insight on *what* people are saying about each car brand, I made word clouds for one of the top (Audi) and lowest (Acura) ranked brands.
+
+```{r wordcloud1}
+tweets2wordcloud <- function(tweets) {
+  library(tm)
+  library(wordcloud)
+  
+  # turn tweets into a Corpus
+  tweetCorpus <- Corpus(VectorSource(tweets))
+  tweetCorpus = tm_map(tweetCorpus, removePunctuation)
+  tweetCorpus = tm_map(tweetCorpus, removeNumbers)
+  tweetCorpus = tm_map(tweetCorpus, removeWords, stopwords("SMART"))
+  
+  myDTM <- TermDocumentMatrix(tweetCorpus,
+                              control = list(minWordLength = 1))
+  
+  m <- as.matrix(myDTM)
+  m <- sort(rowSums(m), decreasing=TRUE)
+  
+  wordcloud(names(m), m, scale = c(3, 0.5), 
+          min.freq = 2, max.words = 50,
+          colors=brewer.pal(8, "RdYlBu"))
+  
+}
+
+
+# Audi 
+audi_tweets <- subset(tweets_by_brand, brand == "audi", select = c("brand", "text_clean"))
+audi_tweets <- droplevels(audi_tweets)
+
+tweets2wordcloud(audi_tweets$text_clean)
+
+# Acura
+acura_tweets <- subset(tweets_by_brand, brand == "acura", select = c("brand", "text_clean"))
+acura_tweets <- droplevels(acura_tweets)
+
+tweets2wordcloud(acura_tweets$text_clean)
+```
+
+From these superficial word clouds, look like Audi-focused messages are generally happy and (e.g. pretty, awesome), whereas Acura-focused messages are concerned about a safety recall (e.g. airbag, check, recall).
+
+Finally, I turned this analysis into an interactive Shiny web-app to share and allow for further investigation as time passes. The web is available at [TBD].
+
+
+## Notes
+
+This report was produced using RStudio.
+
+```{r session_info, warning=FALSE, echo=FALSE}
+sessionInfo()
+```
+
