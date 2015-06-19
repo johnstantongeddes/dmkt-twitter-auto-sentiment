@@ -3,3 +3,7 @@
 .Rhistory
 packrat/lib*/
 *.key
+*.rar
+
+results/
+
