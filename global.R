@@ -11,6 +11,20 @@ library(wordcloud)
 library(memoise)
 # for data parsing
 library(stringr)
+library(plyr)
+
+
+# load custom functions
+source("R/cleanTweet.R")
+source("R/sentiment_score.R")
+
+# load opinion lexicon for sentiment analysis 
+# from Hu & Liu [KDD-2004](http://www.cs.uic.edu/~liub/FBS/sentiment-analysis.html)
+hu_liu_pos <- scan("data/opinion-lexicon-English/positive-words.txt", skip = 35, what = "character")
+hu_liu_neg <- scan("data/opinion-lexicon-English/negative-words.txt", skip = 35, what = "character")
+# add industry-specific terms...
+pos_words <- c(hu_liu_pos, "highlife")
+neg_words <- c(hu_liu_neg, "dammit", "recall", "safety", "crash", "accident", "malfunction")
 
 
 # authorize twitter
@@ -21,8 +35,8 @@ access_secret <- readLines("access_secret.key")
 
 setup_twitter_oauth(consumer_key, consumer_secret, access_token, access_secret)
 
-# The list of valid car makes
-makes <<- list("Acura" = "acura",
+# The list of valid car brands
+brands <<- list("Acura" = "acura",
                "Aston Martin" = "astonmartin",
                "Audi" = "audi",
                "Bentley" = "bentley",
@@ -70,52 +84,50 @@ makes <<- list("Acura" = "acura",
                "Volvo" = "volvo")
 
 
-# Using "memoise" to automatically cache the results
-getTermMatrix <- memoise(function(make) {
+# Using "memoise" to get tweets and automatically cache the results
+getTweets <- memoise(function(brand, n = 1000) {
+  library(twitteR)
+  
   # Careful not to let just any name slip in here; a
   # malicious user could manipulate this value.
-  if (!(make %in% makes))
-    stop("Unknown make")
+  if (!(brand %in% brands)) stop("Unknown brand")
   
-  # get data from Twitter
-  tweetsearch <- paste0("@", make, " OR ", "#", make)
-  tweets <- searchTwitter(tweetsearch, n=500, since = format(Sys.Date()-7), lang="en")
-  
-  # strip retweets
-  tweets <- strip_retweets(tweets, strip_manual = TRUE, strip_mt = TRUE)
-  
-  # convert to data.frame
-  tweetdf <- twListToDF(tweets)
-
-  # clean tweet text
-  tweetdf$text2 <- NA
-  
-  for(i in 1:nrow(tweetdf)) {
-    thistweet <- unlist(str_split(tweetdf[i, 'text'], pattern = " "))
-    # remove all non-alphanumeric characters
-    thistweet <- str_replace_all(thistweet, "[^[:alnum:]]", " ")
-    # lowercase and remove make as it swamps other words
-    thistweet <- tolower(thistweet)
-    thistweet <- thistweet[!grepl(make, thistweet)]
-    # remove links
-    thistweet <- thistweet[!grepl("http", thistweet)]
-    # remove 'amp' which keeps showing up
-    thistweet <- thistweet[!grepl("amp", thistweet)]
-
-    tweetdf[i, "text2"] <- paste(thistweet, collapse = " ")
-  }
-  
-  # turn into a text mining Corpus
-  tweetCorpus <- Corpus(VectorSource(tweetdf$text2))
-  tweetCorpus = tm_map(tweetCorpus, removePunctuation)
-  tweetCorpus = tm_map(tweetCorpus, removeNumbers)
-  tweetCorpus = tm_map(tweetCorpus, removeWords, stopwords("SMART"))
-  
-  myDTM <- TermDocumentMatrix(tweetCorpus,
-                              control = list(minWordLength = 1))
-  
-  m <- as.matrix(myDTM)
-
-  sort(rowSums(m), decreasing = TRUE)
+  TS <- paste0("@", brand, " OR ", "#", brand)
+  # get tweets
+  tweets <- searchTwitter(TS, n = n, since = format(Sys.Date()-7), lang="en")
+  # if search returns tweets, strip retweets and clean text
+  if(length(tweets)>0) {
+    tweets <- strip_retweets(tweets, strip_manual = TRUE, strip_mt = TRUE)
+    # convert to data.frame
+    tweetsdf <- twListToDF(tweets)
+    # ddply to clean tweet text
+    print(brand)
+    tweetsdf <- ddply(tweetsdf, .(id), mutate, text_clean = cleanTweet(text, leaveout = as.name(brand)))
+    # drop 'text' because invalid characters cause problems with printing and such
+    tweetsdf <- subset(tweetsdf, , - text)
+    
+    # add brand and return
+    out <- data.frame(cbind(brand, tweetsdf))
+  } else { # else return empty dataframe in same structure for use with plyr functions
+    out <- structure(list(brand = structure(integer(0), .Label = c(brand), class = "factor"),
+                          #text = character(0), 
+                          favorited = logical(0), 
+                          favoriteCount = numeric(0), 
+                          replyToSN = character(0), 
+                          created = structure(numeric(0), class = c("POSIXct", "POSIXt"), tzone = "UTC"),
+                          truncated = logical(0), replyToSID = character(0), 
+                          id = character(0), 
+                          replyToUID = character(0), 
+                          statusSource = character(0), 
+                          screenName = character(0), 
+                          retweetCount = numeric(0), 
+                          isRetweet = logical(0), 
+                          retweeted = logical(0), 
+                          longitude = character(0), 
+                          latitude = character(0)), 
+                          text_clean = character(0),
+                     .Names = c("brand", "text", "favorited", "favoriteCount", "replyToSN", "created",  "truncated", "replyToSID", "id", "replyToUID", "statusSource", "screenName", "retweetCount", "isRetweet", "retweeted", "longitude","latitude"), row.names = integer(0), class = "data.frame")
+   }
+    
+  return(out)
 })
-

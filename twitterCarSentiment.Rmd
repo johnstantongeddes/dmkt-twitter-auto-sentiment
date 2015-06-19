@@ -1,6 +1,6 @@
 ---
 title: "The TwitteR Auto Sentiment Project"
-author: "John Stanton-Geddes, Data Scientist \n DMKT Product Analytics"
+author: "John Stanton-Geddes, Data Scientist, DMKT Product Analytics"
 date: "June 11, 2015"
 output: 
   html_document:
@@ -143,6 +143,8 @@ cleanTweet <- function(tweet, leaveout) {
 
 # ddply to clean tweet text
 tweets_by_brand <- ddply(tweets_by_brand, .(id), mutate, text_clean = cleanTweet(text, leaveout = brand[1]))
+# drop 'text' because invalid characters cause problems with printing and such
+tweets_by_brand <- subset(tweets_by_brand, , - text)
 ```
 
 # Sentiment Analysis
@@ -216,9 +218,9 @@ tweets2wordcloud <- function(tweets) {
   
   # turn tweets into a Corpus
   tweetCorpus <- Corpus(VectorSource(tweets))
-  tweetCorpus = tm_map(tweetCorpus, removePunctuation)
-  tweetCorpus = tm_map(tweetCorpus, removeNumbers)
-  tweetCorpus = tm_map(tweetCorpus, removeWords, stopwords("SMART"))
+  tweetCorpus <- tm_map(tweetCorpus, removePunctuation)
+  tweetCorpus <- tm_map(tweetCorpus, removeNumbers)
+  tweetCorpus <- tm_map(tweetCorpus, removeWords, stopwords("SMART"))
   
   myDTM <- TermDocumentMatrix(tweetCorpus,
                               control = list(minWordLength = 1))
