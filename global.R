@@ -85,7 +85,7 @@ brands <<- list("Acura" = "acura",
 
 
 # Using "memoise" to get tweets and automatically cache the results
-getTweets <- memoise(function(brand, n = 1000) {
+getTweets <- memoise(function(brand, n = 500) {
   library(twitteR)
   
   # Careful not to let just any name slip in here; a
@@ -94,7 +94,7 @@ getTweets <- memoise(function(brand, n = 1000) {
   
   TS <- paste0("@", brand, " OR ", "#", brand)
   # get tweets
-  tweets <- searchTwitter(TS, n = n, since = format(Sys.Date()-7), lang="en")
+  tweets <- suppressWarnings(searchTwitter(TS, n = n, since = format(Sys.Date()-7), lang="en"))
   # if search returns tweets, strip retweets and clean text
   if(length(tweets)>0) {
     tweets <- strip_retweets(tweets, strip_manual = TRUE, strip_mt = TRUE)
