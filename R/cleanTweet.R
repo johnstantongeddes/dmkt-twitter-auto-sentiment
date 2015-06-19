@@ -8,7 +8,7 @@
 #' cleanTweet(tweet = "a %&messy #example @somebody Tweet with A Link http://somewhere", leaveout = c("a", "with"))
 #' @export 
 #' 
-cleanTweet <- function(tweet, leaveout) {
+cleanTweet <- function(tweet, leaveout = "ignorethisstring") {
   library(stringr)
   
   cleaned_tweet <- unlist(str_split(tweet, pattern = " "))

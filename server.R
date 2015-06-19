@@ -31,7 +31,7 @@ function(input, output, session) {
     m <- as.matrix(myDTM)
     m <- sort(rowSums(m), decreasing=TRUE)
     # drop top term which is (almost?) always the brand because the cleanTweet(leaveout= as.name(brand)) function isn't working...
-    m <- m[-1]
+    #m <- m[-1]
   })
   
   

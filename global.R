@@ -92,6 +92,7 @@ getTweets <- memoise(function(brand, n = 500) {
   # malicious user could manipulate this value.
   if (!(brand %in% brands)) stop("Unknown brand")
   
+  print(brand)
   TS <- paste0("@", brand, " OR ", "#", brand)
   # get tweets
   tweets <- suppressWarnings(searchTwitter(TS, n = n, since = format(Sys.Date()-7), lang="en"))
@@ -100,16 +101,14 @@ getTweets <- memoise(function(brand, n = 500) {
     tweets <- strip_retweets(tweets, strip_manual = TRUE, strip_mt = TRUE)
     # convert to data.frame
     tweetsdf <- twListToDF(tweets)
+    # add brand and return
+    tweetsdf <- data.frame(cbind(brand, tweetsdf))
     # ddply to clean tweet text
-    print(brand)
-    tweetsdf <- ddply(tweetsdf, .(id), mutate, text_clean = cleanTweet(text, leaveout = as.name(brand)))
+    tweetsdf <- ddply(tweetsdf, .(id), mutate, text_clean = cleanTweet(text, leaveout = brand))
     # drop 'text' because invalid characters cause problems with printing and such
     tweetsdf <- subset(tweetsdf, , - text)
-    
-    # add brand and return
-    out <- data.frame(cbind(brand, tweetsdf))
   } else { # else return empty dataframe in same structure for use with plyr functions
-    out <- structure(list(brand = structure(integer(0), .Label = c(brand), class = "factor"),
+    tweetsdf <- structure(list(brand = structure(integer(0), .Label = c(brand), class = "factor"),
                           #text = character(0), 
                           favorited = logical(0), 
                           favoriteCount = numeric(0), 
@@ -128,6 +127,5 @@ getTweets <- memoise(function(brand, n = 500) {
                           text_clean = character(0),
                      .Names = c("brand", "text", "favorited", "favoriteCount", "replyToSN", "created",  "truncated", "replyToSID", "id", "replyToUID", "statusSource", "screenName", "retweetCount", "isRetweet", "retweeted", "longitude","latitude"), row.names = integer(0), class = "data.frame")
    }
-    
-  return(out)
+  return(tweetsdf)
 })
