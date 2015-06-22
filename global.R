@@ -78,7 +78,7 @@ brands <<- list("Acura" = "acura",
                "Tesla" = "teslamotors",
                "Toyota" = "toyota",
                "Volkswagen" = "vw",
-               "Volvo" = "volvocarglobal")
+               "Volvo" = "volvocarsglobal")
 
 
 # Using "memoise" to get tweets and automatically cache the results
