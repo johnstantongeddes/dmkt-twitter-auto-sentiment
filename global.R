@@ -8,7 +8,6 @@ library(twitteR)
 library(SnowballC)
 library(tm)
 library(wordcloud)
-library(memoise)
 # for data parsing
 library(stringr)
 library(plyr)
@@ -82,7 +81,7 @@ brands <<- list("Acura" = "acura",
 
 
 # Using "memoise" to get tweets and automatically cache the results
-getTweets <- memoise(function(brand, n = 500) {
+getTweets <- function(brand, n = 500) {
   library(twitteR)
   
   # Careful not to let just any name slip in here; a
@@ -125,4 +124,4 @@ getTweets <- memoise(function(brand, n = 500) {
                      .Names = c("brand", "text", "favorited", "favoriteCount", "replyToSN", "created",  "truncated", "replyToSID", "id", "replyToUID", "statusSource", "screenName", "retweetCount", "isRetweet", "retweeted", "longitude","latitude"), row.names = integer(0), class = "data.frame")
    }
   return(tweetsdf)
-})
+}
