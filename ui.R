@@ -1,12 +1,12 @@
 fluidPage(
   # Application title
-  titlePanel("Twitter Car Brand Sentiment"),
+  titlePanel("Twitter Automotive Sentiment"),
   
   sidebarLayout(
     # Sidebar with a slider and selection inputs
     sidebarPanel(
-      p("Score sentiment and visualize the words in tweets that # or @ the selected car make in the past week. 
-        The size of the word is proportional to the number of times it has been used. Enjoy!"),
+      p("Choose a car brand to get the sentiment score of tweets that # or @ the selected
+brand in the past week, and visualize common words from those tweets. Enjoy!"),
       selectInput("selection", "Choose a car brand:",
                   choices = brands,
                   selected = "acura"),

@@ -40,7 +40,7 @@ function(input, output, session) {
   
   output$plot <- renderPlot({
     v <- getTermMatrix()
-    wordcloud_rep(names(v), v, scale=c(3,0.5),
+    wordcloud_rep(names(v), v, scale=c(3,1),
                   min.freq = input$freq, max.words=input$max,
                   colors=brewer.pal(8, "Dark2"))
   })
