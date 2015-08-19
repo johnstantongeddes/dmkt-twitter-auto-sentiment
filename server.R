@@ -10,7 +10,7 @@ function(input, output, session) {
     isolate({
       withProgress({
         setProgress(message = "Processing tweets...")
-        getTweets(brand = input$selection, n=500)
+        getTweets(brand = input$selection, n=1000)
       })
     })
   })
