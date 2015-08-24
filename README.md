@@ -6,4 +6,4 @@ the brand.
 
 Please send comments or feedback to (John.Stanton-Geddes@dealer.com)
 
-GPL Licence 3.
+![GNU GPL v3](https://img.shields.io/badge/license-gpl3-blue.svg)
